@@ -95,7 +95,7 @@ public class TextAnalyzer extends Configured implements Tool {
             }
 
             
-            Text max = key;
+            Text max = totalFreqMap.firstKey();
             for (Text word : totalFreqMap.keySet())
             {
                 if (totalFreqMap.get(word) > totalFreqMap.get(max))
@@ -112,7 +112,7 @@ public class TextAnalyzer extends Configured implements Tool {
             totalFreqMap.remove(max);
 
             //   Write out query words and their count
-            for(Text queryWord: totalFreqMap.keySet()){
+            for(Text queryWord: totalFreqMap.navigableKeySet()){
                 String count = totalFreqMap.get(queryWord).toString() + ">";
                 queryWord.set("<" + queryWord.toString() + ",");
                 context.write(queryWord, new Text(count));
