@@ -9,6 +9,9 @@ import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
+import java.io.*;
+import java.util.HashSet;
+import java.util.StringTokenizer;
 
 // Do not change the signature of this class
 public class TextAnalyzer extends Configured implements Tool {
@@ -16,11 +19,42 @@ public class TextAnalyzer extends Configured implements Tool {
     // Replace "?" with your own output key / value types
     // The four template data types are:
     //     <Input Key Type, Input Value Type, Output Key Type, Output Value Type>
-    public static class TextMapper extends Mapper<LongWritable, Text, ?, ?> {
+    public static class TextMapper extends Mapper<LongWritable, Text, Text, MapWritable> {
         public void map(LongWritable key, Text value, Context context)
             throws IOException, InterruptedException
         {
             // Implementation of you mapper function
+            String line = value.toString().toLowerCase();
+            line = line.replaceAll("[^a-z0-9]", " ");
+            
+            StringTokenizer itr = new StringTokenizer(line);
+            
+            //count frequency of each word in the line
+            MapWritable wordFreq = new MapWritable(); //Map<Text, IntWritable>
+            while (itr.hasMoreTokens())
+            {
+                Text word = new Text(itr.nextToken());
+                if (wordFreq.containsKey (word))
+                {
+                    IntWritable tmp = (IntWritable) wordFreq.get(word);
+                    tmp.set (tmp.get() + 1);
+                    wordFreq.put(word, tmp);
+                }
+                else
+                    wordFreq.put (word, new IntWritable(1));
+            }
+
+            //map each contextword to queryword frequencies for the line
+            itr = new StringTokenizer(line);
+            for (Writable word : wordFreq.keySet())
+            {
+                MapWritable querywordFreq = new MapWritable(wordFreq);
+                IntWritable tmp = (IntWritable) querywordFreq.get(word);
+                tmp.set(tmp.get() - 1);
+                if (tmp.get() == 0)
+                    querywordFreq.remove(word);
+                context.write((Text) word, querywordFreq);
+            }
         }
     }
 
@@ -36,14 +70,14 @@ public class TextAnalyzer extends Configured implements Tool {
 
     // Replace "?" with your own input key / value types, i.e., the output
     // key / value types of your mapper function
-    public static class TextReducer extends Reducer<?, ?, Text, Text> {
+    public static class TextReducer extends Reducer<Text, MapWritable, Text, Text> {
         private final static Text emptyText = new Text("");
 
-        public void reduce(Text key, Iterable<Tuple> queryTuples, Context context)
+        public void reduce(Text key, Iterable<MapWritable> queryTuples, Context context)
             throws IOException, InterruptedException
         {
             // Implementation of you reducer function
-
+            
             // Write out the results; you may change the following example
             // code to fit with your reducer function.
             //   Write out the current context key
@@ -63,7 +97,7 @@ public class TextAnalyzer extends Configured implements Tool {
         Configuration conf = this.getConf();
 
         // Create job
-        Job job = new Job(conf, "EID1_EID2"); // Replace with your EIDs
+        Job job = new Job(conf, "KMB3534_STY223"); // Replace with your EIDs
         job.setJarByClass(TextAnalyzer.class);
 
         // Setup MapReduce job
