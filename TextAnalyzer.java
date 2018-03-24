@@ -114,8 +114,8 @@ public class TextAnalyzer extends Configured implements Tool {
             //   Write out query words and their count
             for(Text queryWord: totalFreqMap.navigableKeySet()){
                 String count = totalFreqMap.get(queryWord).toString() + ">";
-                queryWord.set("<" + queryWord.toString() + ",");
-                context.write(queryWord, new Text(count));
+                Text word = new Text("<" + queryWord.toString() + ",");
+                context.write(word, new Text(count));
             }
             //   Empty line for ending the current context key
             context.write(emptyText, emptyText);
