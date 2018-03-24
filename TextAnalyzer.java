@@ -104,18 +104,21 @@ public class TextAnalyzer extends Configured implements Tool {
             
             // Write out the results; you may change the following example
             // code to fit with your reducer function.
-            //   Write out the current context key
+            // Write out the current context key
             Text maxCount = new Text(String.valueOf(totalFreqMap.get(max)));
             context.write(key, maxCount);
-            context.write(max, maxCount);
-            
+            {
+                Text word = new Text("<" + max.toString() + ",");
+		Text count = new Text(maxCount.toString() + ">");
+                context.write(word, count);
+	    } 
             totalFreqMap.remove(max);
 
             //   Write out query words and their count
             for(Text queryWord: totalFreqMap.navigableKeySet()){
-                String count = totalFreqMap.get(queryWord).toString() + ">";
                 Text word = new Text("<" + queryWord.toString() + ",");
-                context.write(word, new Text(count));
+                Text count = new Text (totalFreqMap.get(queryWord).toString() + ">");
+                context.write(word, count);
             }
             //   Empty line for ending the current context key
             context.write(emptyText, emptyText);
