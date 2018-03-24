@@ -1,0 +1,12 @@
+up() {
+   tmp="${1/$'C:'/$'/mnt/c'}"
+   tmp="${tmp//$'\\'/$'/'}"
+   echo "$tmp"
+   if [[ ! "$2" ]]; then
+       cd "$tmp"
+   fi
+}
+
+# Paste anywhere in ~/.bashrc file
+# Usage:
+# up <windows path>
