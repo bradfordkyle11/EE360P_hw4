@@ -10,7 +10,7 @@ import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 import java.io.*;
-import java.util.HashSet;
+import java.util.TreeMap;
 import java.util.StringTokenizer;
 
 // Do not change the signature of this class
@@ -60,13 +60,13 @@ public class TextAnalyzer extends Configured implements Tool {
 
     // Replace "?" with your own key / value types
     // NOTE: combiner's output key / value types have to be the same as those of mapper
-    public static class TextCombiner extends Reducer<?, ?, ?, ?> {
-        public void reduce(Text key, Iterable<Tuple> tuples, Context context)
-            throws IOException, InterruptedException
-        {
-            // Implementation of you combiner function
-        }
-    }
+    // public static class TextCombiner extends Reducer<?, ?, ?, ?> {
+    //     public void reduce(Text key, Iterable<Tuple> tuples, Context context)
+    //         throws IOException, InterruptedException
+    //     {
+    //         // Implementation of you combiner function
+    //     }
+    // }
 
     // Replace "?" with your own input key / value types, i.e., the output
     // key / value types of your mapper function
@@ -76,17 +76,46 @@ public class TextAnalyzer extends Configured implements Tool {
         public void reduce(Text key, Iterable<MapWritable> queryTuples, Context context)
             throws IOException, InterruptedException
         {
+            TreeMap<Text, Integer> totalFreqMap = new TreeMap<>();
             // Implementation of you reducer function
+            for (MapWritable freq : queryTuples)
+            {
+                for (Writable writableWord : freq.keySet())
+                {
+                    Text word = (Text) writableWord;
+                    int inc = ((IntWritable) freq.get(word)).get();
+                    if (totalFreqMap.containsKey(word))
+                    {
+                        int sum = inc + totalFreqMap.get(word);
+                        totalFreqMap.put(word, sum);
+                    }
+                    else
+                        totalFreqMap.put(word, inc);
+                }
+            }
+
+            
+            Text max = key;
+            for (Text word : totalFreqMap.keySet())
+            {
+                if (totalFreqMap.get(word) > totalFreqMap.get(max))
+                max = word;
+            }
             
             // Write out the results; you may change the following example
             // code to fit with your reducer function.
             //   Write out the current context key
-            context.write(key, emptyText);
+            Text maxCount = new Text(String.valueOf(totalFreqMap.get(max)));
+            context.write(key, maxCount);
+            context.write(max, maxCount);
+            
+            totalFreqMap.remove(max);
+
             //   Write out query words and their count
-            for(String queryWord: map.keySet()){
-                String count = map.get(queryWord).toString() + ">";
-                queryWordText.set("<" + queryWord + ",");
-                context.write(queryWordText, new Text(count));
+            for(Text queryWord: totalFreqMap.keySet()){
+                String count = totalFreqMap.get(queryWord).toString() + ">";
+                queryWord.set("<" + queryWord.toString() + ",");
+                context.write(queryWord, new Text(count));
             }
             //   Empty line for ending the current context key
             context.write(emptyText, emptyText);
